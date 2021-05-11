@@ -1,35 +1,162 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from "react-native";
+import React, {useState, useEffect} from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Button } from "react-native";
 import DanielLogo from './assets/img/daniel-logo.png';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import * as Sharing from 'expo-sharing';
+import MapView, { Marker } from 'react-native-maps';
+import Constants from 'expo-constants';
+import * as Permissions from 'expo-permissions';
+import { Camera } from 'expo-camera';
+
+
+
 
 const App = () => {
+  
+  
+  const [hasPermission, setHasPermission] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [ selectImage, setSelectImage ] = useState(null);
+  const [ tipoCamera, setTipoCamera ] = useState(Camera.Constants.Type.back);
 
-  const ponerNombre = () => {
+  let openImagePicker = async () => {
 
-    console.log('Daniel');
+   let permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+   if ( permissionResult.granted === false ) {
+
+    alert('Permisos son requeridos')
+    return;
+
+   }
+
+   const pickerResult = await ImagePicker.launchImageLibraryAsync()
+
+   if (pickerResult.cancelled === true ) {
+
+     return; 
+
+   }
+
+    setSelectImage({localUri: pickerResult.uri})
+    
+   }
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestPermissionsAsync();
+      setHasPermission(status === 'granted')
+      console.log(status);
+    })();
+  }, []);
+
+  if (hasPermission === null) {
+    return (
+    
+      <View>
+
+        <Text>
+
+          Esperando los permisos...
+
+        </Text>
+
+      </View>
+      
+      );
+  }
+
+  if ( hasPermission === false ) {
+
+    return <Text>No access to camera</Text>;
+
+  }
+
+  if (hasPermission === true ) {
+
+    return (
+
+      <Camera 
+        style={styles.camera}
+        type={tipoCamera}
+        
+      >
+
+        <Button
+          title='Voltear cámara'
+          style={styles.buttonCamera}
+
+          onPress={ () => {
+
+            const { front, back } = Camera.Constants.type
+            const nuevoTipo = tipoCamera === back ? front : back 
+            setTipoCamera(nuevoTipo)
+
+          }}
+        
+        />
+
+        
+
+      </Camera>
+
+    )
+    
+
+  }
+
+
+
+  const openShareDialog = async () => {
+
+   if (!(await Sharing.isAvailableAsync())) {
+
+      alert('Compartir, no está disponible');
+
+      return;
+   }
+
+   Sharing.shareAsync(selectImage.localUri);
+
 
   }
 
   return (
 
     <View style={styles.container}>
-      <Image 
+
+      <TouchableOpacity
+        onPress={openImagePicker}
       
-      style={styles.image} 
-      source={DanielLogo}
       
-      />
+      
+      >
+
+        <Image 
+        
+        // defaultSource={DanielLogo}
+        style={styles.image} 
+        source={
+          
+          selectImage !== null ?  {uri: selectImage.localUri} : DanielLogo
+        }
+        
+        />
+
+      </TouchableOpacity>
 
       <TouchableOpacity 
-        onPress={ponerNombre}
         style={styles.button}
+        onPress={openShareDialog}
       >
 
         <Text>
-          Mucho gusto!
+          Nice to meet you!
         </Text>
 
       </TouchableOpacity>
+
 
     </View>  
   );
@@ -50,6 +177,7 @@ const styles = StyleSheet.create ({
   image: {
     width: 160,
     height: 133,
+    // resizeMode: 'contain'
 
   },
   buttonBox: {
@@ -67,6 +195,14 @@ const styles = StyleSheet.create ({
     height: 45,
     borderColor: 'black',
     borderWidth: 2,
+    marginTop: 40
+  },
+  camera: {
+    width: '100%',
+    height: '50%',
+    marginTop: 100,
+  },
+  buttonCamera:{
     marginTop: 40
   }
 })
